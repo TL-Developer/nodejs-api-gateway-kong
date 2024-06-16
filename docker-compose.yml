@@ -1,5 +1,11 @@
 version: "3"
 
+networks:
+  app-network:
+    name: app-network
+    driver:
+      bridge
+
 services:
   kong:
     image: kong:3.7
@@ -28,11 +34,14 @@ services:
       KONG_ADMIN_GUI_URL: http://localhost:8002
     volumes:
       - ./kong/declarative:/kong/declarative
-    extra_hosts:
-      - host.docker.internal:host-gateway
+    networks:
+      - app-network
+
   
   db:
     image: postgres:13-alpine
+    networks:
+      - app-network
     environment:
       POSTGRES_DB: kong
       POSTGRES_USER: kong
@@ -63,23 +72,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - app-network
 
-  api-pod-1:
+  api:
     build: ./api
+    environment:
+      - PORT=3000
     ports:
       - 3000:3000
     depends_on:
       - kong
-    extra_hosts:
-      - host.docker.internal:host-gateway
-
-  api-pod-2:
-    build: ./api
-    environment:
-      - PORT=3001
-    ports:
-      - 3001:3001
-    depends_on:
-      - kong
-    extra_hosts:
-      - host.docker.internal:host-gateway
+    networks:
+      - app-network
